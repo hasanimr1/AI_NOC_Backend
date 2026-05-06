@@ -1,0 +1,5 @@
+donotupload/
+ai_models_cache/
+venv/
+__pycache__/
+hikari_2021.csv

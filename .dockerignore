@@ -1,0 +1,9 @@
+ ai_models_cache/
+.cache/
+ 
+venv/
+env/
+ 
+__pycache__/
+*.pyc 
+hikari_2021.csv
