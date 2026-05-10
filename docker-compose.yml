@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+      - db
+
+  worker:
+    build: .
+    command: python -u worker.py
+    environment:
+      # 1. Tell HuggingFace to save the AI model here
+      - HF_HOME=/app/model_cache
+      # 2. Link the worker to your database service below
+      - DB_HOST=db
+      - DB_NAME=alerts_db
+      - DB_USER=admin
+      - DB_PASS=adminpassword
+      - REDIS_HOST=redis
+    volumes:
+      # 3. Map a folder on your computer to save the AI permanently
+      - ./ai_models_cache:/app/model_cache
+    depends_on:
+      - redis
+      - db
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+
+  db:
+    image: timescale/timescaledb:latest-pg13
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: adminpassword
+      POSTGRES_DB: alerts_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
