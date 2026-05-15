@@ -1,4 +1,4 @@
-﻿fastapi
+fastapi
 uvicorn[standard]
 redis
 pydantic
@@ -9,3 +9,4 @@ joblib
 torch
 transformers
 psycopg2-binary==2.9.9
+OTXv2

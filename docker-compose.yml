@@ -23,6 +23,7 @@ services:
       - DB_USER=admin
       - DB_PASS=adminpassword
       - REDIS_HOST=redis
+      - OTX_API_KEY=${OTX_API_KEY}
     volumes:
       # 3. Map a folder on your computer to save the AI permanently
       - ./ai_models_cache:/app/model_cache

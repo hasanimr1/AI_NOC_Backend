@@ -5,3 +5,4 @@ pyvenv.cfg
 __pycache__/
 hikari_2021.csv
 ai_models_cache/
+.env

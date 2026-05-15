@@ -7,6 +7,7 @@ import warnings
 import psycopg2
 import math   
 from transformers import pipeline
+from OTXv2 import OTXv2, IndicatorTypes
 
 warnings.filterwarnings("ignore")
 print("🛡️ Security Worker is waking up...")
@@ -48,6 +49,31 @@ text_ai = pipeline("text-classification", model="distilbert-base-uncased-finetun
 print("💡 Waking up Solution Generator AI (DistilBERT)...")
 # Note: Using distilgpt2 as the lightweight generative model corresponding to the "distil" requirement
 solution_ai = pipeline("text-generation", model="distilgpt2")
+
+print("👽 Initializing AlienVault OTX Client...")
+OTX_API_KEY = os.getenv("OTX_API_KEY", "")
+if OTX_API_KEY and OTX_API_KEY != "YOUR_ALIENVAULT_API_KEY":
+    try:
+        otx = OTXv2(OTX_API_KEY)
+        print("✅ Connected to AlienVault OTX!")
+    except Exception as e:
+        print(f"⚠️ Failed to connect to AlienVault OTX: {e}")
+        otx = None
+else:
+    print("⚠️ No valid OTX_API_KEY provided. AlienVault IP checks will be skipped.")
+    otx = None
+
+def get_alienvault_score(ip_address):
+    if not otx or not ip_address or ip_address == '0.0.0.0':
+        return 0.0
+    try:
+        details = otx.get_indicator_details_full(IndicatorTypes.IPv4, ip_address)
+        pulse_count = details.get('general', {}).get('pulse_info', {}).get('count', 0)
+        # Cap at 5 pulses for a max score of 1.0 (100%)
+        return min(1.0, pulse_count / 5.0)
+    except Exception as e:
+        print(f"   ⚠️ AlienVault OTX check failed for {ip_address}: {e}")
+        return 0.0
 
 def generate_solution(threat_name):
     print(f"   🧠 Generating AI solution for {threat_name}...")
@@ -174,13 +200,21 @@ while True:
             else:
                 attack_name = identify_attack(flow, fwd, bwd)
                 solution = generate_solution(attack_name)
+                ip_addr = data.get('ip_address', '0.0.0.0')
+                
+                # Model score for Euclidean mapping is 1.0 (100%)
+                model_score = 1.0
+                av_score = get_alienvault_score(ip_addr)
+                
+                final_score = (model_score * 0.6) + (av_score * 0.4)
+                
                 print(f"   🚨 THREAT DETECTED: {attack_name}")
                 print(f"   💡 SOLUTION: {solution}")
-                print(f"   ⚙️ FUSION ENGINE: Euclidean Mapping confirmed. Criticality Score: 100.0%")
+                print(f"   ⚙️ FUSION ENGINE: Euclidean Mapping ({model_score*100:.1f}%) + AlienVault ({av_score*100:.1f}%). Combined Criticality Score: {final_score * 100:.1f}%")
                 try:
                     log_message = f"[{attack_name}] Anomalous Traffic Detected (Flow: {flow})"
                     log_id, log_ts = save_log_to_db(db_device_id, log_message, event_timestamp)
-                    save_alert_from_log(log_id, log_ts, severity="HIGH", score_value=1.0, event_timestamp=event_timestamp, solution=solution)
+                    save_alert_from_log(log_id, log_ts, severity="HIGH", score_value=round(final_score, 3), event_timestamp=event_timestamp, solution=solution)
                     db_conn.commit()
                 except Exception: db_conn.rollback()
 
@@ -200,14 +234,21 @@ while True:
                     threat_name = "SQL Injection"
                 
                 solution = generate_solution(threat_name)
+                ip_addr = data.get('ip_address', '0.0.0.0')
+                
+                model_score = score
+                av_score = get_alienvault_score(ip_addr)
+                
+                final_score = (model_score * 0.6) + (av_score * 0.4)
+                
                 print(f"   🚨 THREAT DETECTED: {threat_name}")
                 print(f"   💡 SOLUTION: {solution}")
-                print(f"   ⚙️ FUSION ENGINE: NLP Context Match. Criticality Score: {score * 100:.1f}%")
+                print(f"   ⚙️ FUSION ENGINE: NLP Context Match ({model_score*100:.1f}%) + AlienVault ({av_score*100:.1f}%). Combined Criticality Score: {final_score * 100:.1f}%")
                 
                 try:
                     final_log_msg = f"[{threat_name}] {message_text}"
                     log_id, log_ts = save_log_to_db(db_device_id, final_log_msg, event_timestamp)
-                    save_alert_from_log(log_id, log_ts, severity="HIGH", score_value=round(score, 3), event_timestamp=event_timestamp, solution=solution)
+                    save_alert_from_log(log_id, log_ts, severity="HIGH", score_value=round(final_score, 3), event_timestamp=event_timestamp, solution=solution)
                     db_conn.commit()
                 except Exception: db_conn.rollback()
             else:
