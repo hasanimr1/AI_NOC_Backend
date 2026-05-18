@@ -1,0 +1,80 @@
+CREATE EXTENSION IF NOT EXISTS timescaledb;
+
+CREATE TABLE Device (
+    DeviceID SERIAL PRIMARY KEY,     
+    DeviceName VARCHAR(255) NOT NULL,
+    IP_Address VARCHAR(50) NOT NULL,
+    CriticalityScore INTEGER
+);
+
+CREATE TABLE Threat_Indicator (
+    IndicatorID SERIAL PRIMARY KEY,
+    IndicatorValue VARCHAR(255) NOT NULL,
+    ThreatType VARCHAR(100)
+);
+
+CREATE TABLE Admin (
+    AdminID SERIAL PRIMARY KEY,
+    Username VARCHAR(100) NOT NULL UNIQUE,
+    Role VARCHAR(50)
+);
+
+-- THE METRIC TABLE (Time-Series Hypertable)
+CREATE TABLE Metric (
+    MetricID SERIAL,
+    DeviceID INTEGER REFERENCES Device(DeviceID),
+    Timestamp TIMESTAMPTZ NOT NULL,   
+    MetricType VARCHAR(100),
+    Value DOUBLE PRECISION,
+    PRIMARY KEY (MetricID, Timestamp)  
+);
+SELECT create_hypertable('metric', 'timestamp');
+
+-- THE LOG TABLE (Time-Series Hypertable)
+CREATE TABLE Log (
+    LogID SERIAL,
+    DeviceID INTEGER REFERENCES Device(DeviceID),
+    Timestamp TIMESTAMPTZ NOT NULL,
+    LogMessage TEXT,                   
+    PRIMARY KEY (LogID, Timestamp) 
+);
+SELECT create_hypertable('log', 'timestamp');
+
+-- THE ALERT TABLE
+CREATE TABLE Alert (
+    AlertID SERIAL PRIMARY KEY,
+    LogID INTEGER,
+    LogTimestamp TIMESTAMPTZ,
+    Timestamp TIMESTAMPTZ NOT NULL,
+    Priority VARCHAR(50),
+    Status VARCHAR(50),
+    FinalScore DOUBLE PRECISION,
+    Solution TEXT
+    -- REMOVED FOREIGN KEY: Hypertables do not support inbound foreign keys
+);
+
+-- NEW: THE AI FEEDBACK TABLE (Retraining Memory)
+-- This table stores patterns that the AI should recognize as False Positives in the future
+CREATE TABLE AI_Feedback (
+    FeedbackID SERIAL PRIMARY KEY,
+    PatternType VARCHAR(50), -- 'Metric' (Numbers) or 'Log' (Text)
+    FeatureVector TEXT,      -- The mathematical signature or the specific log text
+    AdminLabel VARCHAR(50),  -- e.g., 'False Positive'
+    CreatedAt TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE Log_Threat_Match (
+    MatchID SERIAL PRIMARY KEY,
+    LogID INTEGER,
+    LogTimestamp TIMESTAMPTZ,
+    IndicatorID INTEGER REFERENCES Threat_Indicator(IndicatorID),
+    MatchTimestamp TIMESTAMPTZ NOT NULL
+    -- REMOVED FOREIGN KEY
+);
+
+CREATE TABLE Alert_Assignment (
+    AssignmentID SERIAL PRIMARY KEY,
+    AlertID INTEGER REFERENCES Alert(AlertID),
+    AdminID INTEGER REFERENCES Admin(AdminID),
+    AssignmentRole VARCHAR(100)
+);
