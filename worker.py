@@ -5,13 +5,16 @@ import time
 import joblib
 import warnings
 import psycopg2
+import psycopg2.extras 
 import math   
 from transformers import pipeline
 from OTXv2 import OTXv2, IndicatorTypes
 
+
 warnings.filterwarnings("ignore")
-print("🛡️ Security Worker is waking up...")
+print("🛡️ Security Guard waking up with Adaptive Intelligence...")
  
+# 1. LOAD THE REAL HIKARI BRAIN
 print("🧠 Loading the synchronized Hikari AI Brain...")
 try:
     saved_brain = joblib.load("hikari_ai_brain.pkl")
@@ -41,14 +44,40 @@ def identify_attack(flow, fwd, bwd):
             min_dist = dist
             best_match = attack_name
             
-    return best_match
+    return best_match, min_dist
+
+# ============================================================
+# SOAR ENGINE: MAPPING ATTACKS TO SOLUTIONS
+# ============================================================
+def get_ai_solution(threat_name):
+    """
+    SOAR Engine: Maps the precise AI threat classification to an expert-approved playbook.
+    """
+    playbook = {
+        "DDoS Attack": "Rate-limit traffic on edge router. Enable DDoS protection node. Monitor bandwidth.",
+        "Probing Attack": "Block the scanning IP at the perimeter firewall. Ensure unused ports are closed.",
+        "Botnet Activity": "Isolate the infected device from the network. Block outbound connections to the C2 server.",
+        "Crypto-Miner": "Terminate high-CPU processes. Block stratum mining ports (3333, 4444). Quarantine the server.",
+        "XMRIGCC": "Kill mining process. Quarantine node for re-imaging. Review cron jobs for persistence.",
+        "XMRIGCC Miner": "Kill mining process. Quarantine node for re-imaging. Review cron jobs for persistence.",
+        "Data Leak": "Immediately block outbound FTP/SCP connections. Reset user credentials. Audit accessed files.",
+        "Data Exfiltration": "Immediately block outbound FTP/SCP connections. Reset user credentials. Audit accessed files.",
+        "Ping Flood": "Configure firewall to drop inbound ICMP echo requests from the offending subnet.",
+        "Hikari Bruteforce": "Enforce account lockouts and require MFA. Temporarily ban the source IP at the firewall.",
+        "Hikari Bruteforce-XML": "Deploy a WAF rule to block malformed XML payloads. Rate-limit API endpoints.",
+        "Brute-Force Attack": "Force password resets for targeted accounts. Implement progressive delays on login failures.",
+        "SQL Injection": "Sanitize database inputs. Deploy WAF rule to block SQL syntax strings. Audit the web form."
+    }
+    
+    # AI Logic: Find best match in playbook
+    for key, strategy in playbook.items():
+        if key.lower() in threat_name.lower():
+            return strategy
+            
+    return f"Block the source IP and isolate the affected devices to prevent {threat_name} spread."
   
 print("📖 Waking up Language AI (DistilBERT)...")
 text_ai = pipeline("text-classification", model="distilbert-base-uncased-finetuned-sst-2-english")
-
-print("💡 Waking up Solution Generator AI (DistilBERT)...")
-# Note: Using distilgpt2 as the lightweight generative model corresponding to the "distil" requirement
-solution_ai = pipeline("text-generation", model="distilgpt2")
 
 print("👽 Initializing AlienVault OTX Client...")
 OTX_API_KEY = os.getenv("OTX_API_KEY", "")
@@ -66,6 +95,11 @@ else:
 def get_alienvault_score(ip_address):
     if not otx or not ip_address or ip_address == '0.0.0.0':
         return 0.0
+    
+    # Ignore private and loopback IPs to save API rate limits and prevent worker freeze
+    if ip_address.startswith(('192.168.', '10.', '127.')) or any(ip_address.startswith(f'172.{i}.') for i in range(16, 32)):
+        return 0.0
+
     try:
         details = otx.get_indicator_details_full(IndicatorTypes.IPv4, ip_address)
         pulse_count = details.get('general', {}).get('pulse_info', {}).get('count', 0)
@@ -75,29 +109,6 @@ def get_alienvault_score(ip_address):
         print(f"   ⚠️ AlienVault OTX check failed for {ip_address}: {e}")
         return 0.0
 
-def generate_solution(threat_name):
-    print(f"   🧠 Generating AI solution for {threat_name}...")
-    try:
-        prompt = f"To mitigate the {threat_name} cyber attack, the best security solution is to"
-        # We keep max_new_tokens low for fast generation
-        result = solution_ai(prompt, max_new_tokens=25, num_return_sequences=1, truncation=True)
-        generated_text = result[0]['generated_text']
-        
-        # Clean up text to avoid abrupt endings
-        clean_text = generated_text.replace(prompt, "To mitigate, ").replace("\n", " ").strip()
-        sentences = clean_text.split('.')
-        if len(sentences) > 1:
-            solution = '.'.join(sentences[:-1]) + '.'
-        else:
-            solution = clean_text + "..."
-            
-        if len(solution) > 250:
-            solution = solution[:247] + "..."
-        return solution
-    except Exception as e:
-        print(f"   ⚠️ AI Generation failed: {e}")
-        return f"Block the source IP and isolate the affected devices to prevent {threat_name} spread."
- 
 redis_client = redis.Redis(host=os.getenv("REDIS_HOST", "redis"), port=6379, db=0, decode_responses=True)
 print("✅ Connected to Redis Queue!")
 
@@ -116,43 +127,45 @@ def get_db_connection():
             time.sleep(3)
 
 db_conn = get_db_connection()
-cursor = db_conn.cursor()
-
-def ensure_solution_column():
-    try:
-        cursor.execute("ALTER TABLE Alert ADD COLUMN IF NOT EXISTS Solution TEXT;")
-        db_conn.commit()
-        print("✅ Ensured 'Solution' column exists in Alert table.")
-    except Exception as e:
-        db_conn.rollback()
-        print(f"⚠️ Could not add Solution column (might already exist): {e}")
-
-ensure_solution_column()
+cursor = db_conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
 # ============================================================
-# UPGRADED: DEVICE CRITICALITY SCORING
+# ADAPTIVE LEARNING CHECK
+# ============================================================
+def check_for_false_positive(pattern_type, vector_or_text):
+    try:
+        cursor.execute(
+            "SELECT 1 FROM AI_Feedback WHERE PatternType = %s AND FeatureVector = %s",
+            (pattern_type, str(vector_or_text))
+        )
+        return cursor.fetchone() is not None
+    except Exception:
+        return False
+
+# ============================================================
+# DEVICE & DATA HELPERS
 # ============================================================
 def get_or_create_device(device_name, ip_address='0.0.0.0'):
-    cursor.execute("SELECT DeviceID FROM Device WHERE DeviceName = %s", (device_name,))
+    """Finds or creates a device and returns (DeviceID, CriticalityScore)."""
+    cursor.execute("SELECT DeviceID, CriticalityScore FROM Device WHERE DeviceName = %s", (device_name,))
     result = cursor.fetchone()
-    if result: return result[0]
+    if result: return result['deviceid'], result['criticalityscore']
     
-    # NEW LOGIC: Assign a Criticality Score (0-100) based on Device Role
     name_lower = device_name.lower()
-    if "core" in name_lower or "firewall" in name_lower or "gateway" in name_lower:
-        crit_score = 100  # Mission Critical Infrastructure
-    elif "database" in name_lower or "auth" in name_lower:
-        crit_score = 90   # High Priority Servers
-    elif "server" in name_lower or "api" in name_lower or "node" in name_lower:
-        crit_score = 80   # Important App Servers
+    if any(x in name_lower for x in ["core", "firewall", "gateway"]):
+        crit_score = 100
+    elif any(x in name_lower for x in ["database", "auth"]):
+        crit_score = 90
+    elif any(x in name_lower for x in ["server", "api", "node"]):
+        crit_score = 80
     else:
-        crit_score = 50   # Standard Edge Switch / Unknown
+        crit_score = 50
         
     cursor.execute(
         "INSERT INTO Device (DeviceName, IP_Address, CriticalityScore) VALUES (%s, %s, %s) RETURNING DeviceID", 
         (device_name, ip_address, crit_score)
     )
-    return cursor.fetchone()[0]
+    return cursor.fetchone()['deviceid'], crit_score
 
 def save_log_to_db(device_id, log_message, event_timestamp=None):
     if event_timestamp:
@@ -162,6 +175,7 @@ def save_log_to_db(device_id, log_message, event_timestamp=None):
     return cursor.fetchone()
 
 def save_metrics_to_db(device_id, flow_duration, fwd_pkts, bwd_pkts, event_timestamp=None):
+    # CRITICAL: We save 'flow_duration' specifically for the Dashboard Chart
     metrics =[("flow_duration", flow_duration), ("fwd_pkts_tot", fwd_pkts), ("bwd_pkts_tot", bwd_pkts)]
     for metric_type, value in metrics:
         if event_timestamp:
@@ -169,13 +183,19 @@ def save_metrics_to_db(device_id, flow_duration, fwd_pkts, bwd_pkts, event_times
         else:
             cursor.execute("INSERT INTO Metric (DeviceID, Timestamp, MetricType, Value) VALUES (%s, NOW(), %s, %s)", (device_id, metric_type, value))
 
-def save_alert_from_log(log_id, log_timestamp, severity, score_value, event_timestamp=None, solution=""):
-    priority_map = {"HIGH": "Critical", "MEDIUM": "Warning", "LOW": "Info"}
-    priority = priority_map.get(severity, "Info")
+def save_alert_from_log(log_id, log_timestamp, severity, final_score, solution, pattern_to_check, pattern_type, event_timestamp=None):
+    priority = "Critical" if severity == "HIGH" else "Warning"
+    status = "New"
+    
+    # Adaptive Suppression Logic: Check memory vault before creating alert
+    if check_for_false_positive(pattern_type, pattern_to_check):
+        status = "False Positive"
+        print(f"   🤖 ADAPTIVE AI: Pattern recognized as known False Positive. Auto-marking.")
+
     if event_timestamp:
-        cursor.execute("INSERT INTO Alert (LogID, LogTimestamp, Timestamp, Priority, Status, FinalScore, Solution) VALUES (%s, %s, TO_TIMESTAMP(%s), %s, %s, %s, %s)", (log_id, log_timestamp, float(event_timestamp), priority, "New", score_value, solution))
+        cursor.execute("INSERT INTO Alert (LogID, LogTimestamp, Timestamp, Priority, Status, FinalScore, Solution) VALUES (%s, %s, TO_TIMESTAMP(%s), %s, %s, %s, %s)", (log_id, log_timestamp, float(event_timestamp), priority, status, final_score, solution))
     else:
-        cursor.execute("INSERT INTO Alert (LogID, LogTimestamp, Timestamp, Priority, Status, FinalScore, Solution) VALUES (%s, %s, NOW(), %s, %s, %s, %s)", (log_id, log_timestamp, priority, "New", score_value, solution))
+        cursor.execute("INSERT INTO Alert (LogID, LogTimestamp, Timestamp, Priority, Status, FinalScore, Solution) VALUES (%s, %s, NOW(), %s, %s, %s, %s)", (log_id, log_timestamp, priority, status, final_score, solution))
 
 print("🚀 Worker fully awake and patrolling! Waiting for data...\n")
  
@@ -185,81 +205,92 @@ while True:
         data = json.loads(message_data)
         device_name = data.get('device_name', 'Unknown Device')
         event_timestamp = data.get('timestamp')
+        ip_addr = data.get('ip_address', '0.0.0.0')
+        
+        db_device_id, device_criticality = get_or_create_device(device_name, ip_addr)
         
         if queue_name == "metric_queue":
             flow, fwd, bwd = float(data['flow_duration']), float(data['fwd_pkts_tot']), float(data['bwd_pkts_tot'])
             try:
-                db_device_id = get_or_create_device(device_name, data.get('ip_address', '0.0.0.0'))
                 save_metrics_to_db(db_device_id, flow, fwd, bwd, event_timestamp)
                 db_conn.commit()
             except Exception: db_conn.rollback()
 
             prediction = math_ai.predict([[flow, fwd, bwd]])[0]
-            if prediction == 1:
-                print(f"   ✅ Traffic from {device_name} looks normal.")
-            else:
-                attack_name = identify_attack(flow, fwd, bwd)
-                solution = generate_solution(attack_name)
-                ip_addr = data.get('ip_address', '0.0.0.0')
+            attack_name, min_dist = identify_attack(flow, fwd, bwd)
+            
+            if prediction == -1 or min_dist < 1.0:
+                solution = get_ai_solution(attack_name)
                 
-                # Model score for Euclidean mapping is 1.0 (100%)
                 model_score = 1.0
                 av_score = get_alienvault_score(ip_addr)
-                
                 final_score = (model_score * 0.6) + (av_score * 0.4)
                 
-                print(f"   🚨 THREAT DETECTED: {attack_name}")
-                print(f"   💡 SOLUTION: {solution}")
-                print(f"   ⚙️ FUSION ENGINE: Euclidean Mapping ({model_score*100:.1f}%) + AlienVault ({av_score*100:.1f}%). Combined Criticality Score: {final_score * 100:.1f}%")
+                fusion_score = float(device_criticality * final_score)
+                
+                # Format must perfectly match JSON dump from main.py's StatusUpdate endpoint
+                metric_vector = json.dumps({"flow": flow, "fwd": fwd, "bwd": bwd})
+                
+                print(f"\n   🚨 THREAT DETECTED: {attack_name}")
+                if av_score > 0:
+                    print(f"   👽 ALIENVAULT INTEL: IP {ip_addr} is a Known Malicious Threat! (Score: {av_score*100:.1f}%)")
+                print(f"   ⚙️ FUSION ENGINE SCORE: {fusion_score}")
+                print(f"   🔥 CRITICALITY SCORE: {device_criticality}")
+                print(f"   📏 CERTAINTY (EUCLIDEAN MATH): {round(min_dist, 4)}")
+                print(f"   💡 AI SOLUTION: {solution}\n")
+                
                 try:
-                    log_message = f"[{attack_name}] Anomalous Traffic Detected (Flow: {flow})"
-                    log_id, log_ts = save_log_to_db(db_device_id, log_message, event_timestamp)
-                    save_alert_from_log(log_id, log_ts, severity="HIGH", score_value=round(final_score, 3), event_timestamp=event_timestamp, solution=solution)
+                    log_msg = f"[{attack_name}] Anomalous Traffic Detected (Flow: {flow})"
+                    log_res = save_log_to_db(db_device_id, log_msg, event_timestamp)
+                    save_alert_from_log(log_res['logid'], log_res['timestamp'], "HIGH", fusion_score, solution, metric_vector, "Metric", event_timestamp)
                     db_conn.commit()
-                except Exception: db_conn.rollback()
+                except Exception as e: 
+                    print(f"Alert save error: {e}")
+                    db_conn.rollback()
+            else:
+                # LOUD PRINT for Safe Traffic
+                print(f"   ✅ HEARTBEAT: Normal metrics from {device_name} logged to baseline. (Score: 0.0)")
 
         elif queue_name == "log_queue":
             message_text = data['message']
             ai_result = text_ai(message_text)[0] 
-            label = ai_result['label']
-            score = ai_result['score']
-            
-            db_device_id = get_or_create_device(device_name, data.get('ip_address', '0.0.0.0'))
+            label, certainty = ai_result['label'], ai_result['score']
 
-            if label == "NEGATIVE" and score > 0.85:
-                threat_name = "Suspicious Text Log"
-                if "password" in message_text.lower() or "brute" in message_text.lower():
-                    threat_name = "Brute-Force Attack"
-                elif "sql" in message_text.lower() or "drop table" in message_text.lower():
-                    threat_name = "SQL Injection"
+            if label == "NEGATIVE" and certainty > 0.85:
+                threat_name = "Brute-Force Attack" if "password" in message_text.lower() else "SQL Injection" if "sql" in message_text.lower() else "Suspicious Text Log"
+                solution = get_ai_solution(threat_name)
                 
-                solution = generate_solution(threat_name)
-                ip_addr = data.get('ip_address', '0.0.0.0')
-                
-                model_score = score
+                model_score = certainty
                 av_score = get_alienvault_score(ip_addr)
-                
                 final_score = (model_score * 0.6) + (av_score * 0.4)
                 
-                print(f"   🚨 THREAT DETECTED: {threat_name}")
-                print(f"   💡 SOLUTION: {solution}")
-                print(f"   ⚙️ FUSION ENGINE: NLP Context Match ({model_score*100:.1f}%) + AlienVault ({av_score*100:.1f}%). Combined Criticality Score: {final_score * 100:.1f}%")
+                fusion_score = round(final_score * device_criticality, 2)
+                
+                print(f"\n   🚨 THREAT DETECTED: {threat_name}")
+                if av_score > 0:
+                    print(f"   👽 ALIENVAULT INTEL: IP {ip_addr} is a Known Malicious Threat! (Score: {av_score*100:.1f}%)")
+                print(f"   ⚙️ FUSION ENGINE SCORE: {fusion_score}")
+                print(f"   🔥 CRITICALITY SCORE: {device_criticality}")
+                print(f"   📏 CERTAINTY (NLP SCORE): {round(certainty, 4)}")
+                print(f"   💡 AI SOLUTION: {solution}\n")
                 
                 try:
                     final_log_msg = f"[{threat_name}] {message_text}"
-                    log_id, log_ts = save_log_to_db(db_device_id, final_log_msg, event_timestamp)
-                    save_alert_from_log(log_id, log_ts, severity="HIGH", score_value=round(final_score, 3), event_timestamp=event_timestamp, solution=solution)
+                    log_res = save_log_to_db(db_device_id, final_log_msg, event_timestamp)
+                    save_alert_from_log(log_res['logid'], log_res['timestamp'], "HIGH", fusion_score, solution, message_text, "Log", event_timestamp)
                     db_conn.commit()
-                except Exception: db_conn.rollback()
+                except Exception as e: 
+                    print(f"Alert save error: {e}")
+                    db_conn.rollback()
             else:
-                print(f"   ✅ Log from {device_name} is safe.")
                 try:
                     save_log_to_db(db_device_id, message_text, event_timestamp)
                     db_conn.commit()
+                    print(f"   ✅ HEARTBEAT: Safe log from {device_name} logged to baseline.")
                 except Exception: db_conn.rollback()
 
         time.sleep(0.1)
-
     except Exception as e:
         print(f"\n⚠️ Unexpected Error: {e}")
+        db_conn.rollback()
         time.sleep(1)

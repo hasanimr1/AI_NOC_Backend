@@ -19,6 +19,7 @@ CREATE TABLE Admin (
     Role VARCHAR(50)
 );
 
+-- THE METRIC TABLE (Time-Series Hypertable)
 CREATE TABLE Metric (
     MetricID SERIAL,
     DeviceID INTEGER REFERENCES Device(DeviceID),
@@ -29,6 +30,7 @@ CREATE TABLE Metric (
 );
 SELECT create_hypertable('metric', 'timestamp');
 
+-- THE LOG TABLE (Time-Series Hypertable)
 CREATE TABLE Log (
     LogID SERIAL,
     DeviceID INTEGER REFERENCES Device(DeviceID),
@@ -38,6 +40,7 @@ CREATE TABLE Log (
 );
 SELECT create_hypertable('log', 'timestamp');
 
+-- THE ALERT TABLE
 CREATE TABLE Alert (
     AlertID SERIAL PRIMARY KEY,
     LogID INTEGER,
@@ -47,6 +50,17 @@ CREATE TABLE Alert (
     Status VARCHAR(50),
     FinalScore DOUBLE PRECISION,
     Solution TEXT
+    -- REMOVED FOREIGN KEY: Hypertables do not support inbound foreign keys
+);
+
+-- NEW: THE AI FEEDBACK TABLE (Retraining Memory)
+-- This table stores patterns that the AI should recognize as False Positives in the future
+CREATE TABLE AI_Feedback (
+    FeedbackID SERIAL PRIMARY KEY,
+    PatternType VARCHAR(50), -- 'Metric' (Numbers) or 'Log' (Text)
+    FeatureVector TEXT,      -- The mathematical signature or the specific log text
+    AdminLabel VARCHAR(50),  -- e.g., 'False Positive'
+    CreatedAt TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE Log_Threat_Match (
@@ -55,6 +69,7 @@ CREATE TABLE Log_Threat_Match (
     LogTimestamp TIMESTAMPTZ,
     IndicatorID INTEGER REFERENCES Threat_Indicator(IndicatorID),
     MatchTimestamp TIMESTAMPTZ NOT NULL
+    -- REMOVED FOREIGN KEY
 );
 
 CREATE TABLE Alert_Assignment (

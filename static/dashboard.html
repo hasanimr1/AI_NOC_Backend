@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,7 +14,6 @@
             margin: 0;
             padding: 0;
         }
-
         :root {
             --bg-primary: #0a0e1a;
             --bg-card: rgba(15, 23, 42, 0.8);
@@ -30,7 +28,6 @@
             --accent-amber: #f59e0b;
             --accent-cyan: #06b6d4;
         }
-
         body {
             font-family: 'Inter', sans-serif;
             background: var(--bg-primary);
@@ -38,7 +35,6 @@
             min-height: 100vh;
             overflow-x: hidden;
         }
-
         body::before {
             content: '';
             position: fixed;
@@ -50,7 +46,6 @@
             z-index: 0;
             pointer-events: none;
         }
-
         .dashboard {
             max-width: 1400px;
             margin: 0 auto;
@@ -58,7 +53,6 @@
             position: relative;
             z-index: 1;
         }
-
         .header {
             display: flex;
             justify-content: space-between;
@@ -67,7 +61,6 @@
             padding-bottom: 20px;
             border-bottom: 1px solid var(--border);
         }
-
         .header h1 {
             font-size: 1.8rem;
             font-weight: 800;
@@ -76,13 +69,11 @@
             background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-
         .header .subtitle {
             font-size: 0.85rem;
             color: var(--text-secondary);
             margin-top: 4px;
         }
-
         .live-badge {
             display: flex;
             align-items: center;
@@ -95,7 +86,6 @@
             color: var(--accent-emerald);
             font-weight: 600;
         }
-
         .live-dot {
             width: 8px;
             height: 8px;
@@ -103,28 +93,23 @@
             border-radius: 50%;
             animation: pulse 2s infinite;
         }
-
         @keyframes pulse {
-
             0%,
             100% {
                 opacity: 1;
                 box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
             }
-
             50% {
                 opacity: 0.7;
                 box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
             }
         }
-
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 16px;
             margin-bottom: 28px;
         }
-
         .stat-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -133,54 +118,43 @@
             backdrop-filter: blur(12px);
             transition: transform 0.2s, box-shadow 0.2s;
         }
-
         .stat-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
         }
-
         .stat-card .label {
             font-size: 0.75rem;
             color: var(--text-secondary);
             text-transform: uppercase;
             font-weight: 600;
         }
-
         .stat-card .value {
             font-size: 1.8rem;
             font-weight: 800;
             margin-top: 8px;
         }
-
         .stat-card .icon {
             font-size: 1.5rem;
             float: right;
         }
-
         .stat-card.critical .value {
             color: var(--accent-red);
         }
-
         .stat-card.alerts .value {
             color: var(--accent-amber);
         }
-
         .stat-card.devices .value {
             color: var(--accent-cyan);
         }
-
         .stat-card.threats24 .value {
             color: var(--accent-purple);
         }
-
         .stat-card.logs .value {
             color: var(--accent-blue);
         }
-
         .stat-card.metrics .value {
             color: var(--accent-emerald);
         }
-
         .sim-panel {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -188,20 +162,17 @@
             padding: 20px;
             margin-bottom: 28px;
         }
-
         .sim-panel h2 {
             font-size: 1rem;
             font-weight: 700;
             margin-bottom: 14px;
             color: var(--text-primary);
         }
-
         .sim-buttons {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
         }
-
         .sim-btn {
             padding: 8px 14px;
             border: 1px solid var(--border);
@@ -213,28 +184,23 @@
             cursor: pointer;
             transition: all 0.2s;
         }
-
         .sim-btn:hover {
             transform: translateY(-1px);
             border-color: var(--accent-blue);
             box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
         }
-
         .sim-btn.danger {
             border-color: rgba(239, 68, 68, 0.3);
             color: var(--accent-red);
         }
-
         .sim-btn.safe {
             border-color: rgba(16, 185, 129, 0.3);
             color: var(--accent-emerald);
         }
-
         .sim-btn.warning {
             border-color: rgba(245, 158, 11, 0.3);
             color: var(--accent-amber);
         }
-
         .chart-panel {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -243,59 +209,49 @@
             margin-bottom: 28px;
             height: 300px;
         }
-
         .content-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
             margin-bottom: 20px;
         }
-
         @media (max-width: 900px) {
             .content-grid {
                 grid-template-columns: 1fr;
             }
         }
-
         .panel {
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 16px;
             padding: 20px;
         }
-
         .panel-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 14px;
         }
-
         .panel h2 {
             font-size: 1rem;
             font-weight: 700;
         }
-
         .panel-scroll {
             max-height: 400px;
             overflow-y: auto;
         }
-
         .panel-scroll::-webkit-scrollbar {
             width: 4px;
         }
-
         .panel-scroll::-webkit-scrollbar-thumb {
             background: var(--bg-glass);
             border-radius: 4px;
         }
-
         table {
             width: 100%;
             border-collapse: collapse;
             font-size: 0.8rem;
         }
-
         th {
             text-align: left;
             padding: 8px 10px;
@@ -307,16 +263,13 @@
             top: 0;
             background: var(--bg-card);
         }
-
         td {
             padding: 10px;
             border-bottom: 1px solid rgba(100, 120, 180, 0.08);
         }
-
         tr:hover {
             background: rgba(59, 130, 246, 0.05);
         }
-
         .badge {
             padding: 3px 10px;
             border-radius: 6px;
@@ -324,28 +277,23 @@
             font-weight: 700;
             text-transform: uppercase;
         }
-
         .badge.critical {
             background: rgba(239, 68, 68, 0.15);
             color: var(--accent-red);
         }
-
         .badge.warning {
             background: rgba(245, 158, 11, 0.15);
             color: var(--accent-amber);
         }
-
         .badge.info {
             background: rgba(59, 130, 246, 0.15);
             color: var(--accent-blue);
         }
-
         .pagination {
             display: flex;
             gap: 10px;
             align-items: center;
         }
-
         .page-btn {
             background: var(--bg-glass);
             border: 1px solid var(--border);
@@ -355,16 +303,13 @@
             cursor: pointer;
             font-size: 0.7rem;
         }
-
         .page-btn:hover {
             border-color: var(--accent-blue);
         }
-
         .page-info {
             font-size: 0.75rem;
             color: var(--text-secondary);
         }
-
         .interactive-select {
             background: var(--bg-primary);
             color: var(--text-primary);
@@ -375,7 +320,6 @@
             cursor: pointer;
             outline: none;
         }
-
         .msg-cell {
             max-width: 250px;
             overflow: hidden;
@@ -383,25 +327,21 @@
             white-space: nowrap;
             color: var(--text-secondary);
         }
-
         .device-name {
             font-weight: 600;
             color: var(--accent-cyan);
         }
-
         .timestamp {
             color: var(--text-secondary);
             font-size: 0.7rem;
             font-family: monospace;
         }
-
         .empty-state {
             text-align: center;
             padding: 40px;
             color: var(--text-secondary);
             font-style: italic;
         }
-
         .sim-toast {
             position: fixed;
             bottom: 24px;
@@ -417,14 +357,12 @@
             transition: all 0.3s;
             z-index: 100;
         }
-
         .sim-toast.show {
             opacity: 1;
             transform: translateY(0);
         }
     </style>
 </head>
-
 <body>
     <div class="dashboard">
         <div class="header">
@@ -436,7 +374,6 @@
                 <div class="live-dot"></div> LIVE MONITORING
             </div>
         </div>
-
         <div class="stats-grid" id="statsGrid">
             <div class="stat-card critical">
                 <div class="label">Critical Alerts</div>
@@ -463,7 +400,6 @@
                 <div class="value" id="statMetrics">-</div>
             </div>
         </div>
-
         <div class="sim-panel">
             <h2>⚡ Attack Simulator</h2>
             <div class="sim-buttons" id="simBtns">
@@ -485,9 +421,7 @@
             </div>
         </div>
         <div class="sim-toast" id="simToast"></div>
-
         <div class="chart-panel"><canvas id="trafficChart"></canvas></div>
-
         <div class="content-grid">
             <div class="panel">
                 <div class="panel-header">
@@ -541,7 +475,6 @@
                 </div>
             </div>
         </div>
-
         <div class="content-grid">
             <div class="panel">
                 <div class="panel-header">
@@ -589,14 +522,12 @@
             </div>
         </div>
     </div>
-
     <script>
         const API = '';
         let currentPage = 1;
         const alertsPerPage = 10;
         let trafficChart = null;
         let adminsList = [];
-
         function formatTime(iso) {
             if (!iso) return '-';
             return new Date(iso + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -605,20 +536,17 @@
             const cls = p === 'Critical' ? 'critical' : p === 'Warning' ? 'warning' : 'info';
             return `<span class="badge ${cls}">${p}</span>`;
         }
-
         // FIXED: Safe Solution Display
         function showSolution(sol) {
             const cleanSol = sol.replace(/"/g, '&quot;');
             alert("💡 AI PLAYBOOK SOLUTION:\n\n" + sol);
         }
-
         async function fetchAdmins() {
             try {
                 const r = await fetch(API + '/api/admins');
                 adminsList = await r.json();
             } catch (e) { console.error('Admins error:', e); }
         }
-
         async function fetchStats() {
             try {
                 const r = await fetch(API + '/api/stats');
@@ -631,36 +559,29 @@
                 document.getElementById('statMetrics').textContent = d.total_metrics;
             } catch (e) { console.error('Stats error:', e); }
         }
-
         async function fetchAlerts() {
             try {
                 const r = await fetch(API + `/api/alerts?page=${currentPage}&limit=${alertsPerPage}`);
                 const data = await r.json();
                 const body = document.getElementById('alertsBody');
-
                 if (data.length === 0) {
                     if (currentPage > 1) { currentPage--; fetchAlerts(); return; }
                     body.innerHTML = '<tr><td colspan="7" class="empty-state">No alerts found. Trigger an attack!</td></tr>'; return;
                 }
-
                 const statusOptions = ['New', 'Investigating', 'Resolved', 'False Positive'];
-
                 body.innerHTML = data.map(a => {
                     const statusDropdown = `<select class="interactive-select" onchange="updateStatus(${a.id}, this.value)">
                         ${statusOptions.map(s => `<option value="${s}" ${a.status === s ? 'selected' : ''}>${s}</option>`).join('')}
                     </select>`;
-
                     const assignDropdown = `<select class="interactive-select" onchange="assignAlert(${a.id}, this.value)">
                         <option value="">Unassigned</option>
                         ${adminsList.map(adm => `<option value="${adm.id}" ${a.assignee === adm.username ? 'selected' : ''}>${adm.username}</option>`).join('')}
                     </select>`;
-
                     // FIXED: Properly escaped string for the alert() function
                     const safeSolution = a.solution ? a.solution.replace(/'/g, "\\'") : 'No solution available.';
                     const solutionBtn = a.solution
                         ? `<button class="sim-btn safe" style="padding: 4px 8px; font-size: 0.65rem;" onclick="showSolution('${safeSolution}')">💡 View Fix</button>`
                         : `<span class="badge info">N/A</span>`;
-
                     return `<tr>
                         <td class="device-name">${a.device}</td>
                         <td>${priorityBadge(a.priority)}</td>
@@ -674,7 +595,6 @@
                 document.getElementById('currentPage').textContent = currentPage;
             } catch (e) { console.error('Alerts error:', e); }
         }
-
         async function updateStatus(alertId, newStatus) {
             try {
                 const r = await fetch(API + `/api/alerts/${alertId}/status`, {
@@ -687,7 +607,6 @@
                 fetchStats();
             } catch (e) { showToast('Error updating status'); }
         }
-
         async function assignAlert(alertId, adminId) {
             if (!adminId) return;
             try {
@@ -700,21 +619,17 @@
                 showToast("✅ Alert Assigned to SOC Analyst!");
             } catch (e) { showToast('Error assigning alert'); }
         }
-
         function changePage(direction) {
             if (currentPage + direction < 1) return;
             currentPage += direction;
             fetchAlerts();
         }
-
         async function fetchChartData() {
             try {
                 const r = await fetch(API + '/api/metrics/chart');
                 const data = await r.json();
-
                 const labels = data.map(d => d.timestamp);
                 const values = data.map(d => d.value);
-
                 if (trafficChart) {
                     trafficChart.data.labels = labels;
                     trafficChart.data.datasets[0].data = values;
@@ -724,7 +639,6 @@
                 }
             } catch (e) { console.error('Chart error:', e); }
         }
-
         function initChart(labels, data) {
             const ctx = document.getElementById('trafficChart').getContext('2d');
             trafficChart = new Chart(ctx, {
@@ -754,7 +668,6 @@
                 }
             });
         }
-
         async function fetchLogs() {
             try {
                 const r = await fetch(API + '/api/logs');
@@ -768,20 +681,17 @@
                 </tr>`).join('');
             } catch (e) { console.error(e); }
         }
-
         async function fetchDevices() {
             try {
                 const r = await fetch(API + '/api/devices');
                 const data = await r.json();
                 const body = document.getElementById('devicesBody');
                 if (data.length === 0) { body.innerHTML = '<tr><td colspan="4" class="empty-state">No devices registered.</td></tr>'; return; }
-
                 body.innerHTML = data.map(d => {
                     let badgeClass = 'info';
                     let score = d.criticality || 50;
                     if (score >= 90) badgeClass = 'critical';
                     else if (score >= 70) badgeClass = 'warning';
-
                     return `<tr>
                         <td>${d.id}</td>
                         <td class="device-name">${d.name}</td>
@@ -791,7 +701,6 @@
                 }).join('');
             } catch (e) { console.error(e); }
         }
-
         async function fetchMetrics() {
             try {
                 const r = await fetch(API + '/api/metrics/recent');
@@ -806,7 +715,6 @@
                 </tr>`).join('');
             } catch (e) { console.error(e); }
         }
-
         async function simulate(type) {
             try {
                 const r = await fetch(API + `/ingest/simulate/${type}`, { method: 'POST' });
@@ -815,20 +723,17 @@
                 setTimeout(refreshAll, 1000);
             } catch (e) { showToast('Error: ' + e.message); }
         }
-
         function showToast(msg) {
             const t = document.getElementById('simToast');
             t.textContent = '✅ ' + msg;
             t.classList.add('show');
             setTimeout(() => t.classList.remove('show'), 3000);
         }
-
         async function initDashboard() {
             await fetchAdmins();
             refreshAll();
             setInterval(refreshAll, 5000);
         }
-
         function refreshAll() {
             fetchStats();
             fetchAlerts();
@@ -837,9 +742,7 @@
             fetchDevices();
             fetchMetrics();
         }
-
         initDashboard();
     </script>
 </body>
-
 </html>

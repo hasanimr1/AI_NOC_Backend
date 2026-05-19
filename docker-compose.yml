@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build: .
@@ -10,7 +8,6 @@ services:
     depends_on:
       - redis
       - db
-
   worker:
     build: .
     command: python -u worker.py
@@ -23,19 +20,17 @@ services:
       - DB_USER=admin
       - DB_PASS=adminpassword
       - REDIS_HOST=redis
-      - OTX_API_KEY=${OTX_API_KEY}
+      - OTX_API_KEY=1b769e7c95d21545df997177f6e9dbb4955159826ad03c0fd77298bdc1494d8b
     volumes:
       # 3. Map a folder on your computer to save the AI permanently
       - ./ai_models_cache:/app/model_cache
     depends_on:
       - redis
       - db
-
   redis:
     image: redis:latest
     ports:
       - "6379:6379"
-
   db:
     image: timescale/timescaledb:latest-pg13
     environment:

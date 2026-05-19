@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import redis
 import json
@@ -9,6 +10,16 @@ import psycopg2
 import psycopg2.extras
 
 app = FastAPI(title="AI-NOC Ingestion API")
+
+# Allow the React dev server to call this API without CORS errors
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 redis_client = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
  
 DB_HOST = os.getenv("DB_HOST", "db")
@@ -25,6 +36,15 @@ class LogMessage(BaseModel):
     device_name: str
     message: str
     timestamp: str
+    ip_address: str = "0.0.0.0"
+
+class MetricPayload(BaseModel):
+    device_name: str
+    flow_duration: float
+    fwd_pkts_tot: float
+    bwd_pkts_tot: float
+    timestamp: str
+    ip_address: str = "0.0.0.0"
  
 class StatusUpdate(BaseModel):
     status: str
@@ -39,6 +59,11 @@ class AssignAlert(BaseModel):
 @app.post("/ingest/logs")
 async def ingest_logs(log: LogMessage):
     redis_client.lpush("log_queue", json.dumps(log.dict()))
+    return {"status": "success"}
+
+@app.post("/ingest/metrics")
+async def ingest_metrics(metric: MetricPayload):
+    redis_client.lpush("metric_queue", json.dumps(metric.dict()))
     return {"status": "success"}
 
 @app.post("/ingest/simulate/normal")
@@ -102,6 +127,7 @@ async def simulate_hikari_xmrigcc():
     return {"status": "success", "message": "Hikari XMRIGCC queued!"}
 
 import random
+
 @app.post("/ingest/simulate/random-anomaly")
 async def simulate_random():
     data = {
@@ -135,23 +161,28 @@ async def simulate_safe_log():
 # ============================================================
 # READ API ENDPOINTS (Analytics & Retrieval)
 # ============================================================
-
 @app.get("/api/stats")
 async def get_dashboard_stats():
     try:
         conn, cur = get_db_cursor()
         cur.execute("SELECT COUNT(*) as count FROM Alert")
         total_alerts = cur.fetchone()['count']
+        
         cur.execute("SELECT COUNT(*) as count FROM Alert WHERE Priority = 'Critical'")
         critical_alerts = cur.fetchone()['count']
+        
         cur.execute("SELECT COUNT(*) as count FROM Device")
         total_devices = cur.fetchone()['count']
+        
         cur.execute("SELECT COUNT(*) as count FROM Log")
         total_logs = cur.fetchone()['count']
+        
         cur.execute("SELECT COUNT(*) as count FROM Metric")
         total_metrics = cur.fetchone()['count']
+        
         cur.execute("SELECT COUNT(*) as count FROM Alert WHERE Timestamp >= NOW() - INTERVAL '24 hours'")
         threats_24h = cur.fetchone()['count']
+        
         cur.execute("""
             SELECT d.DeviceName, COUNT(a.AlertID) as alert_count FROM Alert a
             JOIN Log l ON a.LogID = l.LogID JOIN Device d ON l.DeviceID = d.DeviceID
@@ -159,6 +190,7 @@ async def get_dashboard_stats():
         """)
         top_device_row = cur.fetchone()
         top_device = top_device_row['devicename'] if top_device_row else "None"
+        
         cur.close()
         conn.close()
         return {"total_alerts": total_alerts, "critical_alerts": critical_alerts, "total_devices": total_devices, "threats_24h": threats_24h, "top_device": top_device, "total_logs": total_logs, "total_metrics": total_metrics}
@@ -183,10 +215,10 @@ async def get_alerts(page: int = 1, limit: int = 10):
         alerts = cur.fetchall()
         cur.close()
         conn.close()
-        return[{"id": r['alertid'], "device": r['devicename'], "message": r['logmessage'], "priority": r['priority'], "status": r['status'], "score": r['finalscore'], "timestamp": r['timestamp'].isoformat() if r['timestamp'] else None, "assignee": r['assignee'], "solution": r['solution']} for r in alerts]
+        return [{"id": r['alertid'], "device": r['devicename'], "message": r['logmessage'], "priority": r['priority'], "status": r['status'], "score": r['finalscore'], "timestamp": r['timestamp'].isoformat() if r['timestamp'] else None, "assignee": r['assignee'], "solution": r['solution']} for r in alerts]
     except Exception as e:
         print(e)
-        return[]
+        return []
 
 @app.get("/api/metrics/chart")
 async def get_chart_metrics():
@@ -199,7 +231,7 @@ async def get_chart_metrics():
         metrics.reverse()
         return [{"device": r['devicename'], "value": r['value'], "timestamp": r['timestamp'].strftime('%H:%M:%S') if r['timestamp'] else None} for r in metrics]
     except Exception:
-        return[]
+        return []
 
 @app.get("/api/devices")
 async def get_devices():
@@ -209,9 +241,9 @@ async def get_devices():
         devices = cur.fetchall()
         cur.close()
         conn.close()
-        return[{"id": r['deviceid'], "name": r['devicename'], "ip": r['ip_address'], "criticality": r['criticalityscore']} for r in devices]
+        return [{"id": r['deviceid'], "name": r['devicename'], "ip": r['ip_address'], "criticality": r['criticalityscore']} for r in devices]
     except Exception:
-        return[]
+        return []
 
 @app.get("/api/logs")
 async def get_logs():
@@ -221,9 +253,9 @@ async def get_logs():
         logs = cur.fetchall()
         cur.close()
         conn.close()
-        return[{"id": r['logid'], "device": r['devicename'], "message": r['logmessage'], "timestamp": r['timestamp'].isoformat() if r['timestamp'] else None} for r in logs]
+        return [{"id": r['logid'], "device": r['devicename'], "message": r['logmessage'], "timestamp": r['timestamp'].isoformat() if r['timestamp'] else None} for r in logs]
     except Exception:
-        return[]
+        return []
 
 @app.get("/api/metrics/recent")
 async def get_recent_metrics():
@@ -233,14 +265,55 @@ async def get_recent_metrics():
         metrics = cur.fetchall()
         cur.close()
         conn.close()
-        return[{"device": r['devicename'], "type": r['metrictype'], "value": r['value'], "timestamp": r['timestamp'].isoformat() if r['timestamp'] else None} for r in metrics]
+        return [{"device": r['devicename'], "type": r['metrictype'], "value": r['value'], "timestamp": r['timestamp'].isoformat() if r['timestamp'] else None} for r in metrics]
     except Exception:
-        return[]
+        return []
+
+# ============================================================
+# THREAT INTELLIGENCE ENDPOINT
+# ============================================================
+@app.get("/api/threat_intel")
+async def get_threat_intel():
+    """Aggregates high-priority alerts with device IPs as Indicators of Compromise."""
+    try:
+        conn, cur = get_db_cursor()
+        cur.execute("""
+            SELECT DISTINCT
+                d.IP_Address,
+                a.Priority as threat_type,
+                a.FinalScore as confidence,
+                a.Priority as assessment,
+                d.DeviceName as device
+            FROM Alert a
+            JOIN Log l ON a.LogID = l.LogID AND a.LogTimestamp = l.Timestamp
+            JOIN Device d ON l.DeviceID = d.DeviceID
+            WHERE a.Priority IN ('Critical', 'High', 'Medium')
+            ORDER BY a.FinalScore DESC NULLS LAST
+            LIMIT 20
+        """)
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        result = []
+        threat_map = {"Critical": "Malicious C2", "High": "Ransomware", "Medium": "Suspicious Probe"}
+        for r in rows:
+            score = float(r['confidence']) * 100 if r['confidence'] and float(r['confidence']) <= 1 else (r['confidence'] or 50)
+            result.append({
+                "ip": r['ip_address'] or "0.0.0.0",
+                "type": r['threat_type'],
+                "confidence": round(min(float(score), 100)),
+                "assessment": threat_map.get(r['threat_type'], "Unknown Threat"),
+                "device": r['device']
+            })
+        return result
+    except Exception as e:
+        print(f"Threat Intel Error: {e}")
+        return []
 
 # ============================================================
 # PHASE 3: INCIDENT MANAGEMENT & WORKFLOW API
 # ============================================================
-
 @app.get("/api/admins")
 async def get_admins():
     """Fetches all SOC Admins. Automatically creates dummy admins if empty for testing."""
@@ -259,7 +332,7 @@ async def get_admins():
         conn.close()
         return [{"id": r['adminid'], "username": r['username'], "role": r['role']} for r in admins]
     except Exception as e:
-        return[]
+        return []
 
 @app.put("/api/alerts/{alert_id}/status")
 async def update_alert_status(alert_id: int, req: StatusUpdate):

@@ -33,7 +33,6 @@ else:
     exit()
 
 features_to_study =['flow_duration', 'fwd_pkts_tot', 'bwd_pkts_tot']
-
 clean_dataset = dataset.dropna(subset=features_to_study + [cat_col, label_col])
 
 print("🧠 Training the Isolation Forest on healthy network traffic...")
@@ -43,7 +42,6 @@ math_ai.fit(normal_data[features_to_study].values)
 
 print("🔍 Learning the specific mathematical patterns of ALL Hikari attacks...")
 attack_data = clean_dataset[clean_dataset[label_col] == 1]
-
 # This automatically groups EVERY SINGLE unique attack label in the dataset!
 attack_profiles = attack_data.groupby(cat_col)[features_to_study].median().to_dict('index')
 
